@@ -1,6 +1,7 @@
 import asyncio
 from urllib.parse import unquote
 
+from aiohttp import ClientSession
 from better_proxy import Proxy
 from pyrogram import Client
 from pyrogram.errors import Unauthorized, UserDeactivated, AuthKeyUnregistered
@@ -77,4 +78,17 @@ class Tapper:
 
         except Exception as error:
             logger.error(f"{self.session_name} | Unknown error during Authorization: {error}")
+            await asyncio.sleep(delay=3)
+
+    async def login(self, http_client: ClientSession, tg_web_data: str) -> dict:
+        try:
+            http_client.headers['X-Tg-User-Id'] = self.user_id
+            http_client.headers['X-Tg-Web-Data'] = tg_web_data
+            response = await http_client.post(url='https://backend.yumify.one/api/game/login',
+                                              json={})
+            response.raise_for_status()
+
+            return await response.json()
+        except Exception as error:
+            logger.error(f"{self.session_name} | Unknown error while getting Access Token: {error}")
             await asyncio.sleep(delay=3)
