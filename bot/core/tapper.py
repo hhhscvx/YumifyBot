@@ -92,3 +92,27 @@ class Tapper:
         except Exception as error:
             logger.error(f"{self.session_name} | Unknown error while getting Access Token: {error}")
             await asyncio.sleep(delay=3)
+
+    async def claim(self, http_client: ClientSession) -> dict:
+        """TODO claim['v..']['v..']['v..']['value'] | claim['v']['v']['dayNumber']"""
+        try:
+            response = await http_client.post(url='https://backend.yumify.one/api/daily-rewards/claimDailyReward',
+                                              json={})
+            response.raise_for_status()
+
+            return await response.json()
+        except Exception as error:
+            logger.error(f"{self.session_name} | Unknown error when claim: {error}")
+            await asyncio.sleep(delay=3)
+
+    async def get_latest_claim(self, http_client: ClientSession) -> dict:
+        """TODO если get_latest_claim['value']['value']['hasUnclaimed'] true то клеймить"""
+        try:
+            response = await http_client.post(url='https://backend.yumify.one/api/daily-rewards/getLatestStreak',
+                                              json={})
+            response.raise_for_status()
+
+            return await response.json()
+        except Exception as error:
+            logger.error(f"{self.session_name} | Unknown error when get latest claim: {error}")
+            await asyncio.sleep(delay=3)
