@@ -116,3 +116,14 @@ class Tapper:
         except Exception as error:
             logger.error(f"{self.session_name} | Unknown error when get latest claim: {error}")
             await asyncio.sleep(delay=3)
+
+    async def send_taps(self, http_client: ClientSession, taps: int) -> dict:
+        try:
+            response = await http_client.post(url='https://backend.yumify.one/api/game/submitTaps?turbo=false',
+                                              json={'battleId': None, 'taps': taps})
+            response.raise_for_status()
+
+            return await response.json()
+        except Exception as error:
+            logger.error(f"{self.session_name} | Unknown error when tapping: {error}")
+            await asyncio.sleep(delay=3)
