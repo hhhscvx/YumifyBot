@@ -117,13 +117,47 @@ class Tapper:
             logger.error(f"{self.session_name} | Unknown error when get latest claim: {error}")
             await asyncio.sleep(delay=3)
 
-    async def send_taps(self, http_client: ClientSession, taps: int) -> dict:
+    async def send_taps(self, http_client: ClientSession, taps: int, turbo: bool = False) -> dict:
         try:
-            response = await http_client.post(url='https://backend.yumify.one/api/game/submitTaps?turbo=false',
+            turbo = 'false' if not turbo else 'true'
+            response = await http_client.post(url=f'https://backend.yumify.one/api/game/submitTaps?turbo={turbo}',
                                               json={'battleId': None, 'taps': taps})
             response.raise_for_status()
 
             return await response.json()
         except Exception as error:
             logger.error(f"{self.session_name} | Unknown error when tapping: {error}")
+            await asyncio.sleep(delay=3)
+
+    async def apply_turbo_boost(self, http_client: ClientSession) -> dict:
+        try:
+            response = await http_client.post(url='https://backend.yumify.one/api/game/activateDailyBooster',
+                                              json={'booster': 'turbo'})
+            response.raise_for_status()
+
+            return await response.json()
+        except Exception as error:
+            logger.error(f"{self.session_name} | Unknown error when Apply Turbo Boost: {error}")
+            await asyncio.sleep(delay=3)
+
+    async def apply_energy_boost(self, http_client: ClientSession) -> dict:
+        try:
+            response = await http_client.post(url='https://backend.yumify.one/api/game/activateDailyBooster',
+                                              json={'booster': 'fullRecharge'})
+            response.raise_for_status()
+
+            return await response.json()
+        except Exception as error:
+            logger.error(f"{self.session_name} | Unknown error when Apply Energy Boost: {error}")
+            await asyncio.sleep(delay=3)
+
+    async def get_me(self, http_client: ClientSession) -> dict:
+        try:
+            response = await http_client.post(url='https://backend.yumify.one/api/game/me',
+                                              json={})
+            response.raise_for_status()
+
+            return await response.json()
+        except Exception as error:
+            logger.error(f"{self.session_name} | Unknown error when get user info: {error}")
             await asyncio.sleep(delay=3)
