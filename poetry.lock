@@ -57,6 +57,17 @@ optional = false
 python-versions = ">=3.8"
 
 [[package]]
+name = "art"
+version = "6.3"
+description = "ASCII Art Library For Python"
+category = "dev"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+dev = ["coverage (>=4.1)", "vulture (>=1.0)", "bandit (>=1.5.1)", "pydocstyle (>=3.0.0)"]
+
+[[package]]
 name = "attrs"
 version = "24.2.0"
 description = "Classes Without Boilerplate"
@@ -271,7 +282,7 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.11"
-content-hash = "4976e359b645b465678010ddcfcd0d865dc47b59b58a60d57048015357fbb15c"
+content-hash = "8b762c88ff0d5af2c4943c47510ef6ed7b43f8d098056eb9c0c32f6f57b93372"
 
 [metadata.files]
 aiohappyeyeballs = []
@@ -279,6 +290,7 @@ aiohttp = []
 aiohttp-proxy = []
 aiosignal = []
 annotated-types = []
+art = []
 attrs = []
 better-proxy = []
 colorama = []

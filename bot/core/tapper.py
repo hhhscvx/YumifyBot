@@ -203,7 +203,7 @@ class Tapper:
 
             while True:
                 try:
-                    ...
+                    ... # TODO: Taps Functional
 
                 except InvalidSession as error:
                     raise error
