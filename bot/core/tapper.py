@@ -238,10 +238,11 @@ class Tapper:
                                    f"Balance: <c>{player_tapped.get('balance')}</c> (<g>+{taps}</g>)")
 
                     if available_energy < settings.MIN_AVAILABLE_ENERGY:
+                        sleep_time = randint(*settings.SLEEP_BY_MIN_ENERGY)
                         logger.info(f"{self.session_name} | Minimum energy reached: {available_energy}")
-                        logger.info(f"{self.session_name} | Sleep {settings.SLEEP_BY_MIN_ENERGY}s")
+                        logger.info(f"{self.session_name} | Sleep {sleep_time}s")
 
-                        await asyncio.sleep(delay=settings.SLEEP_BY_MIN_ENERGY)
+                        await asyncio.sleep(delay=sleep_time)
 
                         continue
                 except InvalidSession as error:
