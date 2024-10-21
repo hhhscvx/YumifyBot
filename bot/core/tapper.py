@@ -200,7 +200,7 @@ class Tapper:
             logger.error(f"{self.session_name} | Proxy: {proxy} | Error: {error}")
 
     async def run(self, proxy: str | None) -> None:
-        active_turbo = False
+        active_turbo: bool = False
 
         proxy_conn = ProxyConnector().from_url(proxy) if proxy else None
 
@@ -232,9 +232,25 @@ class Tapper:
                 return
 
             while True:
-                try:
+                try:    
                     taps = randint(*settings.RANDOM_TAPS_COUNT)
 
+                    tapped = await self.send_taps(http_client, taps=taps, turbo=active_turbo)
+
+                    player_tapped: dict = tapped.get('value')
+                    available_energy = int(player_tapped.get('energy'))
+                    logger.success(f"{self.session_name} | Successful tapped! | "
+                                   f"Balance: <c>{player_tapped.get('balance')}</c> (<g>+{taps}</g>)")
+                    
+
+
+                    if available_energy < settings.MIN_AVAILABLE_ENERGY:
+                        logger.info(f"{self.session_name} | Minimum energy reached: {available_energy}")
+                        logger.info(f"{self.session_name} | Sleep {settings.SLEEP_BY_MIN_ENERGY}s")
+
+                        await asyncio.sleep(delay=settings.SLEEP_BY_MIN_ENERGY)
+
+                        continue
                 except InvalidSession as error:
                     raise error
 
