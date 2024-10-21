@@ -1,4 +1,5 @@
 import asyncio
+from pprint import pprint
 from random import randint, uniform
 from urllib.parse import unquote
 
@@ -87,13 +88,14 @@ class Tapper:
 
     async def login(self, http_client: ClientSession, tg_web_data: str) -> dict:
         try:
-            http_client.headers['X-Tg-User-Id'] = self.user_id
+            http_client.headers['X-Tg-User-Id'] = str(self.user_id)
             http_client.headers['X-Tg-Web-Data'] = tg_web_data
             response = await http_client.post(url='https://backend.yumify.one/api/game/login',
                                               json={})
+            resp_json = await response.json()
             response.raise_for_status()
 
-            return await response.json()
+            return resp_json
         except Exception as error:
             logger.error(f"{self.session_name} | Unknown error while Login: {error}")
             await asyncio.sleep(delay=3)
@@ -156,6 +158,28 @@ class Tapper:
             logger.error(f"{self.session_name} | Unknown error when Apply Energy Boost: {error}")
             await asyncio.sleep(delay=3)
 
+    async def get_latest_streak(self, http_client: ClientSession) -> dict:
+        try:
+            response = await http_client.post(url='https://backend.yumify.one/api/daily-rewards/getLatestStreak',
+                                              json={})
+            response.raise_for_status()
+
+            return await response.json()
+        except Exception as error:
+            logger.error(f"{self.session_name} | Unknown error when Get Latest Streak: {error}")
+            await asyncio.sleep(delay=3)
+
+    async def collect_daily(self, http_client: ClientSession) -> dict:
+        try:
+            response = await http_client.post(url='https://backend.yumify.one/api/daily-rewards/claimDailyReward',
+                                              json={})
+            response.raise_for_status()
+
+            return await response.json()
+        except Exception as error:
+            logger.error(f"{self.session_name} | Unknown error when Claim Daily: {error}")
+            await asyncio.sleep(delay=3)
+
     async def get_me(self, http_client: ClientSession) -> dict:
         try:
             response = await http_client.post(url='https://backend.yumify.one/api/game/me',
@@ -189,9 +213,15 @@ class Tapper:
                 try:
                     tg_web_data = await self.get_tg_web_data(proxy=proxy)
                     login = await self.login(http_client=http_client, tg_web_data=tg_web_data)
-                    logger.success(f"{self.session_name} | Login! Balance: {login.get('balance')} | Energy: "
-                                   f"{login.get('energy')}/{login.get('energyLimit')} | Turbo Boosts: {login.get('turboBoostersAvailable')}"
-                                   f" | Energy Boosts: {login.get('fullRechargeBoostersAvailable')}")
+                    if login.get('kind') == 'success':
+                        player_data: dict = login.get('value').get('player')
+                        logger.success(f"{self.session_name} | Login! Balance: {player_data.get('balance')} | Energy: "
+                                       f"{player_data.get('energy')}/{player_data.get('energyLimit')} | Turbo Boosts: "
+                                       f"{player_data.get('turboBoostersAvailable')} | Energy Boosts: "
+                                       f"{player_data.get('fullRechargeBoostersAvailable')}")
+                    else:
+                        pprint(login)
+                        raise ValueError("Login 'kind' != 'success'")
                     break
                 except Exception as e:
                     logger.error(f"{self.session_name} | Left login attempts: {attempts}, error: {e}")
@@ -203,7 +233,7 @@ class Tapper:
 
             while True:
                 try:
-                    ... # TODO: Taps Functional
+                    taps = randint(*settings.RANDOM_TAPS_COUNT)
 
                 except InvalidSession as error:
                     raise error
