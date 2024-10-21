@@ -24,6 +24,8 @@ class Tapper:
         self.session_name = tg_client.name
         self.tg_client = tg_client
         self.user_id = 0
+        self.energy_boost_name = 'fullRecharge'
+        self.turbo_boost_name = 'turbo'
 
     async def get_tg_web_data(self, proxy: str | None) -> str:
         if proxy:
@@ -137,21 +139,13 @@ class Tapper:
             logger.error(f"{self.session_name} | Unknown error when tapping: {error}")
             await asyncio.sleep(delay=3)
 
-    async def apply_turbo_boost(self, http_client: ClientSession) -> dict:
+    async def apply_boost(self, http_client: ClientSession, boost_type: str) -> dict:
+        """
+        :param str boost_type: 'fullRecharge' or 'turbo'
+        """
         try:
             response = await http_client.post(url='https://backend.yumify.one/api/game/activateDailyBooster',
-                                              json={'booster': 'turbo'})
-            response.raise_for_status()
-
-            return await response.json()
-        except Exception as error:
-            logger.error(f"{self.session_name} | Unknown error when Apply Turbo Boost: {error}")
-            await asyncio.sleep(delay=3)
-
-    async def apply_energy_boost(self, http_client: ClientSession) -> dict:
-        try:
-            response = await http_client.post(url='https://backend.yumify.one/api/game/activateDailyBooster',
-                                              json={'booster': 'fullRecharge'})
+                                              json={'booster': boost_type})
             response.raise_for_status()
 
             return await response.json()
@@ -237,14 +231,38 @@ class Tapper:
                     logger.success(f"{self.session_name} | Successful tapped! | "
                                    f"Balance: <c>{player_tapped.get('balance')}</c> (<g>+{taps}</g>)")
 
-                    if available_energy < settings.MIN_AVAILABLE_ENERGY:
-                        sleep_time = randint(*settings.SLEEP_BY_MIN_ENERGY)
-                        logger.info(f"{self.session_name} | Minimum energy reached: {available_energy}")
-                        logger.info(f"{self.session_name} | Sleep {sleep_time}s")
+                    player_data = await self.get_me()
 
-                        await asyncio.sleep(delay=sleep_time)
+                    turbo_boost_count = player_data['turboBoostersAvailable']
+                    energy_boost_count = player_data['fullRechargeBoostersAvailable']
 
-                        continue
+                    if active_turbo is False:
+                        if (energy_boost_count > 0
+                            and available_energy < settings.MIN_AVAILABLE_ENERGY
+                                and settings.APPLY_DAILY_ENERGY is True):
+
+                            logger.info(f"{self.session_name} | Sleep 5s before activating the daily energy boost")
+                            await asyncio.sleep(delay=5)
+
+                            apply = await self.apply_boost(http_client=http_client, boost_type=self.energy_boost_name)
+                            if apply.get('kind') == 'success':
+                                logger.success(f"{self.session_name} | Energy boost applied")
+
+                                await asyncio.sleep(delay=1)
+
+                            continue
+
+
+                        
+
+                        if available_energy < settings.MIN_AVAILABLE_ENERGY:
+                            sleep_time = randint(*settings.SLEEP_BY_MIN_ENERGY)
+                            logger.info(f"{self.session_name} | Minimum energy reached: {available_energy}")
+                            logger.info(f"{self.session_name} | Sleep {sleep_time}s")
+
+                            await asyncio.sleep(delay=sleep_time)
+
+                            continue
                 except InvalidSession as error:
                     raise error
 

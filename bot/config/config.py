@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     RANDOM_TAPS_COUNT: list[int] = [30, 80]
     SLEEP_BETWEEN_TAP: list[int] = [7, 10]
 
+    APPLY_DAILY_ENERGY: bool = True
+    APPLY_DAILY_TURBO: bool = True
+
     RELOGIN_DELAY: list[int] = [5, 7]
 
     USE_PROXY_FROM_FILE: bool = False
