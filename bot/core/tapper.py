@@ -104,7 +104,6 @@ class Tapper:
             await asyncio.sleep(delay=3)
 
     async def claim(self, http_client: ClientSession) -> dict:
-        """TODO claim['v..']['v..']['v..']['value'] | claim['v']['v']['dayNumber']"""
         try:
             response = await http_client.post(url='https://backend.yumify.one/api/daily-rewards/claimDailyReward',
                                               json={})
@@ -116,7 +115,6 @@ class Tapper:
             await asyncio.sleep(delay=3)
 
     async def get_latest_claim(self, http_client: ClientSession) -> dict:
-        """TODO если get_latest_claim['value']['value']['hasUnclaimed'] true то клеймить"""
         try:
             response = await http_client.post(url='https://backend.yumify.one/api/daily-rewards/getLatestStreak',
                                               json={})
@@ -174,6 +172,7 @@ class Tapper:
 
     async def run(self, proxy: str | None) -> None:
         active_turbo: bool = False
+        turbo_time = 0
         last_claimed_time = 0
 
         proxy_conn = ProxyConnector().from_url(proxy) if proxy else None
@@ -208,11 +207,11 @@ class Tapper:
             while True:
                 try:
                     if time() - last_claimed_time > 3600 * 8:
-                        latest = await self.get_latest_claim()
+                        latest = await self.get_latest_claim(http_client)
                         await asyncio.sleep(delay=1)
                         if latest.get('value').get('value').get('hasUnclaimed'):
                             logger.info(f"{self.session_name} | Try to claim daily...")
-                            claimed = await self.claim()
+                            claimed = await self.claim(http_client)
                             if claimed.get('kind') == 'success':
                                 last_claimed_time = time()
                                 claimed_amount = int(claimed['value']['value']['value']['value'])
@@ -224,14 +223,24 @@ class Tapper:
 
                     taps = randint(*settings.RANDOM_TAPS_COUNT)
 
-                    tapped = await self.send_taps(http_client, taps=taps, turbo=active_turbo)
+                    if active_turbo:
+                        tapped = await self.send_taps(http_client=http_client, taps=taps, turbo=True)
 
+                        if time() - turbo_time > 10:
+                            active_turbo = False
+                            turbo_time = 0
+                    else:
+                        tapped = await self.send_taps(http_client, taps=taps, turbo=active_turbo)
+
+                    player_data = await self.get_me(http_client)
+                    if not player_data or not tapped.get('kind') == 'success':
+                        continue
+
+                    player_data: dict = player_data.get('value')
                     player_tapped: dict = tapped.get('value')
                     available_energy = int(player_tapped.get('energy'))
                     logger.success(f"{self.session_name} | Successful tapped! | "
                                    f"Balance: <c>{player_tapped.get('balance')}</c> (<g>+{taps}</g>)")
-
-                    player_data = await self.get_me()
 
                     turbo_boost_count = player_data['turboBoostersAvailable']
                     energy_boost_count = player_data['fullRechargeBoostersAvailable']
@@ -252,8 +261,20 @@ class Tapper:
 
                             continue
 
+                        if turbo_boost_count > 0 and settings.APPLY_DAILY_TURBO is True:
+                            logger.info(f"{self.session_name} | Sleep 5s before activating the daily turbo boost")
+                            await asyncio.sleep(delay=5)
 
-                        
+                            apply = await self.apply_boost(http_client=http_client, boost_type=self.turbo_boost_name)
+                            if apply.get('kind') is True:
+                                logger.success(f"{self.session_name} | Turbo boost applied")
+
+                                await asyncio.sleep(delay=1)
+
+                                active_turbo = True
+                                turbo_time = time()
+
+                            continue
 
                         if available_energy < settings.MIN_AVAILABLE_ENERGY:
                             sleep_time = randint(*settings.SLEEP_BY_MIN_ENERGY)
