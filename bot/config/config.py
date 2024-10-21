@@ -7,8 +7,8 @@ class Settings(BaseSettings):
     API_ID: int
     API_HASH: str
 
-    MIN_AVAILABLE_ENERGY: int = 100
-    SLEEP_BY_MIN_ENERGY: int = 80
+    MIN_AVAILABLE_ENERGY: int = 800
+    SLEEP_BY_MIN_ENERGY: int = 400
 
     RANDOM_TAPS_COUNT: list[int] = [30, 80]
     SLEEP_BETWEEN_TAP: list[int] = [7, 10]

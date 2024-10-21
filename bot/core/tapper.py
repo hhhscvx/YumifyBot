@@ -1,6 +1,7 @@
 import asyncio
 from pprint import pprint
 from random import randint, uniform
+from time import time
 from urllib.parse import unquote
 
 from aiohttp import ClientSession
@@ -158,28 +159,6 @@ class Tapper:
             logger.error(f"{self.session_name} | Unknown error when Apply Energy Boost: {error}")
             await asyncio.sleep(delay=3)
 
-    async def get_latest_streak(self, http_client: ClientSession) -> dict:
-        try:
-            response = await http_client.post(url='https://backend.yumify.one/api/daily-rewards/getLatestStreak',
-                                              json={})
-            response.raise_for_status()
-
-            return await response.json()
-        except Exception as error:
-            logger.error(f"{self.session_name} | Unknown error when Get Latest Streak: {error}")
-            await asyncio.sleep(delay=3)
-
-    async def collect_daily(self, http_client: ClientSession) -> dict:
-        try:
-            response = await http_client.post(url='https://backend.yumify.one/api/daily-rewards/claimDailyReward',
-                                              json={})
-            response.raise_for_status()
-
-            return await response.json()
-        except Exception as error:
-            logger.error(f"{self.session_name} | Unknown error when Claim Daily: {error}")
-            await asyncio.sleep(delay=3)
-
     async def get_me(self, http_client: ClientSession) -> dict:
         try:
             response = await http_client.post(url='https://backend.yumify.one/api/game/me',
@@ -201,6 +180,7 @@ class Tapper:
 
     async def run(self, proxy: str | None) -> None:
         active_turbo: bool = False
+        last_claimed_time = 0
 
         proxy_conn = ProxyConnector().from_url(proxy) if proxy else None
 
@@ -232,7 +212,22 @@ class Tapper:
                 return
 
             while True:
-                try:    
+                try:
+                    if time() - last_claimed_time > 3600 * 8:
+                        latest = await self.get_latest_claim()
+                        await asyncio.sleep(delay=1)
+                        if latest.get('value').get('value').get('hasUnclaimed'):
+                            logger.info(f"{self.session_name} | Try to claim daily...")
+                            claimed = await self.claim()
+                            if claimed.get('kind') == 'success':
+                                last_claimed_time = time()
+                                claimed_amount = int(claimed['value']['value']['value']['value'])
+                                claimed_streak = claimed['value']['value']['dayNumber']
+                                logger.success(f"{self.session_name} | Successful Claimed! | Day {claimed_streak} "
+                                               f"<g>+{claimed_amount}</g>")
+
+                        await asyncio.sleep(delay=1)
+
                     taps = randint(*settings.RANDOM_TAPS_COUNT)
 
                     tapped = await self.send_taps(http_client, taps=taps, turbo=active_turbo)
@@ -241,8 +236,6 @@ class Tapper:
                     available_energy = int(player_tapped.get('energy'))
                     logger.success(f"{self.session_name} | Successful tapped! | "
                                    f"Balance: <c>{player_tapped.get('balance')}</c> (<g>+{taps}</g>)")
-                    
-
 
                     if available_energy < settings.MIN_AVAILABLE_ENERGY:
                         logger.info(f"{self.session_name} | Minimum energy reached: {available_energy}")
