@@ -151,6 +151,39 @@ class Tapper:
             logger.error(f"{self.session_name} | Unknown error when Apply Energy Boost: {error}")
             await asyncio.sleep(delay=3)
 
+    async def level_up(self, http_client: ClientSession, booster: str) -> dict:
+        """
+        :param str booster: 'energyLimit' or 'multitap' or 'rechargeSpeed'
+        """
+        try:
+            response = await http_client.post(url='https://backend.yumify.one/api/game/purchaseBooster',
+                                              json={'booster': booster})
+            response.raise_for_status()
+
+            return await response.json()
+        except Exception as error:
+            logger.error(f"{self.session_name} | Unknown error when Level Up Boost: {error}")
+            await asyncio.sleep(delay=3)
+
+    async def get_boosters(self, http_client: ClientSession, booster: str, level: int | str) -> int:
+        """
+        :param str booster: 'energyLimit' or 'multitap' or 'rechargeSpeed'
+        :param str | int level: user booster level
+
+        :return: Price to upgrade booster
+        """
+        try:
+            response = await http_client.post(url='https://backend.yumify.one/api/game/getBoosters',
+                                              json={})
+            response.raise_for_status()
+            level = str(level)
+            resp_json = await response.json()
+
+            return int(resp_json[booster][level].get('price'))
+        except Exception as error:
+            logger.error(f"{self.session_name} | Unknown error when Get Boosters: {error}")
+            await asyncio.sleep(delay=3)
+
     async def get_me(self, http_client: ClientSession) -> dict:
         try:
             response = await http_client.post(url='https://backend.yumify.one/api/game/me',
@@ -214,6 +247,7 @@ class Tapper:
                             claimed = await self.claim(http_client)
                             if claimed.get('kind') == 'success':
                                 last_claimed_time = time()
+                                # TODO: тут какая-то проблема, клеймит но я неправильно ключи расставил
                                 claimed_amount = int(claimed['value']['value']['value']['value'])
                                 claimed_streak = claimed['value']['value']['dayNumber']
                                 logger.success(f"{self.session_name} | Successful Claimed! | Day {claimed_streak} "
@@ -239,11 +273,20 @@ class Tapper:
                     player_data: dict = player_data.get('value')
                     player_tapped: dict = tapped.get('value')
                     available_energy = int(player_tapped.get('energy'))
+                    balance = int(player_data['balance'])
                     logger.success(f"{self.session_name} | Successful tapped! | "
                                    f"Balance: <c>{player_tapped.get('balance')}</c> (<g>+{taps}</g>)")
 
                     turbo_boost_count = player_data['turboBoostersAvailable']
                     energy_boost_count = player_data['fullRechargeBoostersAvailable']
+
+                    next_tap_level = player_data['multitapLevel'] + 1
+                    next_energy_level = player_data['energyLimitLevel'] + 1
+                    next_charge_level = player_data['rechargeSpeedLevel'] + 1
+
+                    next_tap_price = await self.get_boosters(http_client, booster='multitap', level=next_tap_level)
+                    next_energy_price = await self.get_boosters(http_client, booster='energyLimit', level=next_tap_level)
+                    next_charge_price = await self.get_boosters(http_client, booster='rechargeSpeed', level=next_tap_level)
 
                     if active_turbo is False:
                         if (energy_boost_count > 0
@@ -273,6 +316,60 @@ class Tapper:
 
                                 active_turbo = True
                                 turbo_time = time()
+
+                            continue
+
+                        if (settings.AUTO_UPGRADE_TAP is True
+                                and balance > next_tap_price
+                                and next_tap_level <= settings.MAX_TAP_LEVEL):
+                            logger.info(f"{self.session_name} | Sleep 5s before upgrade tap to {next_tap_level} lvl")
+                            await asyncio.sleep(delay=5)
+
+                            level_up = await self.level_up(http_client=http_client, booster='multitap')
+                            if level_up.get('kind') == 'success':
+                                logger.success(f"{self.session_name} | Tap upgraded to {next_tap_level} lvl")
+
+                                await asyncio.sleep(delay=1)
+                            elif level_up.get('kind') == 'error':
+                                logger.info(
+                                    f"{self.session_name} | Can`t upgrade Tap | Message: {level_up.get('error').get('message')}")
+
+                            continue
+
+                        if (settings.AUTO_UPGRADE_ENERGY is True
+                                and balance > next_energy_price
+                                and next_energy_level <= settings.MAX_ENERGY_LEVEL):
+                            logger.info(
+                                f"{self.session_name} | Sleep 5s before upgrade energy to {next_energy_level} lvl")
+                            await asyncio.sleep(delay=5)
+
+                            level_up: dict = await self.level_up(http_client=http_client, booster='energyLimit')
+                            if level_up.get('kind') == 'success':
+                                logger.success(f"{self.session_name} | Energy upgraded to {next_energy_level} lvl")
+
+                                await asyncio.sleep(delay=1)
+                            elif level_up.get('kind') == 'error':
+                                logger.info(
+                                    f"{self.session_name} | Can`t upgrade Energy | Message: {level_up.get('error').get('message')}")
+
+                            continue
+
+                        if (settings.AUTO_UPGRADE_CHARGE is True
+                                and balance > next_charge_price
+                                and next_charge_level <= settings.MAX_CHARGE_LEVEL):
+                            logger.info(
+                                f"{self.session_name} | Sleep 5s before upgrade recharge speed to {next_charge_level} lvl")
+                            await asyncio.sleep(delay=5)
+
+                            level_up = await self.level_up(http_client=http_client, booster='rechargeSpeed')
+                            if level_up.get('kind') == 'success':
+                                logger.success(
+                                    f"{self.session_name} | Recharge speed upgraded to {next_charge_level} lvl")
+
+                                await asyncio.sleep(delay=1)
+                            elif level_up.get('kind') == 'error':
+                                logger.info(
+                                    f"{self.session_name} | Can`t upgrade Recharge Speed | Message: {level_up.get('error').get('message')}")
 
                             continue
 
