@@ -248,8 +248,8 @@ class Tapper:
                             if claimed.get('kind') == 'success':
                                 last_claimed_time = time()
                                 # TODO: тут какая-то проблема, клеймит но я неправильно ключи расставил
-                                claimed_amount = int(claimed['value']['value']['value']['value'])
-                                claimed_streak = claimed['value']['value']['dayNumber']
+                                claimed_amount = int(claimed['value']['value'][0]['value']['value'])
+                                claimed_streak = claimed['value']['value'][0]['dayNumber']
                                 logger.success(f"{self.session_name} | Successful Claimed! | Day {claimed_streak} "
                                                f"<g>+{claimed_amount}</g>")
 
